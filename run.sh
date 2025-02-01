@@ -1,4 +1,4 @@
-nasm -f elf64 matmul_scalar.asm -o m.o 
+nasm -f elf64 $1 -o m.o 
 ld m.o 
 # gcc m.o
 ./a.out

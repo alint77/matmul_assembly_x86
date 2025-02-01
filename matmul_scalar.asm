@@ -1,3 +1,11 @@
+STDIN equ 0
+STDOUT equ 1
+STDERR equ 2
+
+SYS_READ equ 0
+SYS_WRITE equ 1
+SYS_EXIT equ 60
+
 SECTION .data
     text_str: db "testing!",10,0
     msg: db "Hello!",0xA
@@ -12,11 +20,17 @@ SECTION .text
 global _start
 global main
 
+
+%macro exit 1
+    mov rax,SYS_EXIT
+    mov rdi,%1
+    syscall
+%endmacro
+
+
 _start:
 main:
     
-
-loop1:
     
     call _print_msg
     mov rcx,0x8
@@ -26,24 +40,23 @@ loop1:
     mov rax,text_str
     call _print_str
 
-    mov rax,60
-    mov rdi,0
-    syscall
+    exit 0
 
 _print_msg: 
-    mov rax,1
-    mov rdi,1
-    mov rsi, msg
+    mov rax,SYS_WRITE
+    mov rdi,STDOUT
+    mov rsi,msg
     mov rdx,msg_len
     syscall 
     ret
 
 _getInput:
-    mov rax,0
-    mov rdi,0
+    mov rax,SYS_READ
+    mov rdi,STDIN
     mov rsi,name
     mov rdx,8
     syscall
+    push rsi
     ret
 
 _print_rcx:
@@ -51,9 +64,9 @@ _print_rcx:
     mov [num],rcx
     mov rcx,10
     mov [num+8],rcx
-    mov rax,1
-    mov rdi,1
-    mov rsi, num
+    mov rax,SYS_WRITE
+    mov rdi,STDOUT
+    mov rsi,num
     mov rdx,9
     syscall 
     ret
@@ -62,15 +75,16 @@ _print_rcx:
 _print_str:
     push rax
     mov rbx,0
-_printLoop:
+.printLoop:
+
     inc rax
     inc rbx
     mov cl,[rax]
     cmp cl,0
-    jne _printLoop
+    jne .printLoop
 
-    mov rax,1
-    mov rdi,1
+    mov rax,SYS_WRITE
+    mov rdi,STDOUT
     pop rsi
     mov rdx,rbx
     syscall

@@ -1,12 +1,7 @@
-STDIN equ 0
-STDOUT equ 1
-STDERR equ 2
-
-SYS_READ equ 0
-SYS_WRITE equ 1
-SYS_EXIT equ 60
+%include "header.inc"
 
 SECTION .data
+
     text_str: db "testing!",10,0
     msg: db "Hello!",0xA
     msg_len: equ $-msg
@@ -19,14 +14,6 @@ SECTION .text
 
 global _start
 global main
-
-
-%macro exit 1
-    mov rax,SYS_EXIT
-    mov rdi,%1
-    syscall
-%endmacro
-
 
 _start:
 main:
@@ -73,8 +60,10 @@ _print_rcx:
 ;input: rax as ptr to nullterminated str
 ;output: print nullterminated str to stdout
 _print_str:
+
     push rax
     mov rbx,0
+
 .printLoop:
 
     inc rax

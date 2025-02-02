@@ -1,10 +1,19 @@
-STDIN equ 0
-STDOUT equ 1
-STDERR equ 2
+%define STDIN  0
+%define STDOUT  1
+%define STDERR  2
+%define O_WRONLY  1
+%define O_CREAT   64
+%define O_APPEND  1024
+%define S_IRUSR   0400
+%define S_IWUSR   0200
 
-SYS_READ equ 0
-SYS_WRITE equ 1
-SYS_EXIT equ 60
+%define SYS_READ  0
+%define SYS_WRITE  1
+%define SYS_EXIT  60
+%define SYS_OPEN  2
+%define SYS_WRITE 1
+%define SYS_CLOSE 3
+
 
 %macro exit 1
     mov rax,SYS_EXIT

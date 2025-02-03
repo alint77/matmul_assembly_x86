@@ -1,6 +1,4 @@
 %include "header.inc"
-global main
-extern printf
 
 section .data
     a_matrix_rmaj: dd 2.1,3.1,4.1 , 5.1,6.1,7.1 , 8.1,9.1,10.1 , 11.1,12.1,13.1 , 14.1,15.1,16.1
@@ -15,9 +13,16 @@ section .data
 section .bss
     c_matrix_rmaj: resd 20
 
-
 section .text
+global main
+extern printf
+extern _exit
+
 main:
+push rbp
+mov rbp,rsp
+sub rsp,8
+
 xor r10,r10 ; i
 .loop_a_rows:
 xor r11,r11 ; j
@@ -42,30 +47,18 @@ xor r11,r11 ; j
 
         addss xmm2,xmm0 ; xmm2 hold the dotprod so far
 
-
         inc r12
         cmp r12,[a_matrix_cols] ; loop control
         jl .loop_dotprod
 
-
-        ; calling printf to display the result inside xmm2 
-        cvtss2sd xmm0, xmm2 
-        lea rdi, [rel fmt] ; address of label
-        mov rax, 1       ; AL=1
-        push rbx
-        push r11
-        push r10
-        call printf
-        pop r10
-        pop r11
-        pop rbx
-
         ; Save dotprod into c_matrix_rmaj[i][j]
         mov rax, r10              ; rax = i
-        imul rax, [b_matrix_cols] ; rax = i * b_matrix_cols
+        imul rax,  [b_matrix_cols] ; rax = i * b_matrix_cols
         add rax, r11              ; rax = (i * b_matrix_cols) + j
-        shl rax, 2                ; multiply by 4 for float32
-        movss [c_matrix_rmaj + rax*4], xmm2 ; store dot product
+        shl rax, 2               ; multiply by 4 for float32
+        movss  [c_matrix_rmaj + rax], xmm2 ; store dot product
+
+        
     
 
     inc r11
@@ -76,6 +69,47 @@ inc r10
 cmp r10,[a_matrix_rows] ; loop control
 jl .loop_a_rows
 
+mov rdi,20
+lea rsi,[rel c_matrix_rmaj]
+call _printf_arr_f32
 
-exit 0
+add rsp,8
+leave
+ret
+
+
+
+; void _printf_arr_f32 ( long {rdi}, float* {rsi} )
+_printf_arr_f32:
+    push rbp
+    mov rbp, rsp
+    push rdi                   ; Save loop counter (rdi)
+    push rsi                   ; Save array pointer (rsi)
+    
+    lea rdi, [rel fmt]         ; Load format string address once
+
+.loop:
+    push rdi                   ; Save format string
+    push rsi                   ; Save current array pointer
+
+    movss xmm0, [rsi]          ; Load float from array
+    cvtss2sd xmm0, xmm0        ; Convert to double for printf
+
+    sub rsp, 8                 ; Align stack to 16 bytes
+    mov rax, 1                 ; AL = 1 (1 vector register used)
+    call printf
+    add rsp, 8                 ; Restore stack alignment
+
+    pop rsi                    ; Restore array pointer
+    pop rdi                    ; Restore format string
+
+    add rsi, 4                 ; Move to next element
+    dec qword [rbp - 8]        ; Decrement loop counter (saved rdi)
+    jnz .loop
+
+.done:
+    pop rsi                    ; Restore original rsi
+    pop rdi                    ; Restore original rdi
+    pop rbp
+    ret
 

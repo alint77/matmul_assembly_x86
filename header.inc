@@ -1,3 +1,6 @@
+%ifndef HEADERFILE
+%define HEADERFILE
+
 %define STDIN  0
 %define STDOUT  1
 %define STDERR  2
@@ -20,4 +23,6 @@
     mov rdi,%1
     syscall
 %endmacro
+
+%endif
 

@@ -8,11 +8,14 @@ matmul_scalar_2.asm : Naive implementation on 1024x1024 matrices: ~2.8s (with hi
 
 The equivelant C code runs much slower: -O0: 4.3s, -O3: 3.4s 
 
-profiling shows 99.7% time being spent inside inner loop (.loop_dotprod)
+profiling shows 99.7% of time being spent inside inner loop (.loop_dotprod)
 
 optimisations:
+
 minimise number of memory accesses inside inner loop by caching i*a_matrix_cols, a_matrix_cols and b_matrix_cols inside registers before reaching inner loop.
+
 aligning the instructions inside the inner loop causes massive performance uplift and reduces variance significantly: ~2.1s 
+
 aligning the matrices themselves also improves performance: ~1.85s
 
 

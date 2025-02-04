@@ -39,7 +39,7 @@ xor r11,r11 ; j
         
         mov r8,r12 ; r8 holds k
         imul r8,[b_matrix_cols]
-        add r8,r11; r8 = [k*b_rows + j] = [k][j]
+        add r8,r11; r8 = [k*b_cols + j] = [k][j]
         
         movss xmm1,  [b_matrix_rmaj+r8*4]    ;  xmm1 used for b[k][j]
 

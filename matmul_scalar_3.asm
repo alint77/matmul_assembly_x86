@@ -2,17 +2,17 @@
 
 section .data
     align 16
-    a_matrix_rmaj times 131072 dd 2.1, -5.7, 4.1, 1.3, 2.1, -5.7, 4.1, 1.3 ;512
+    a_matrix_rmaj times 131072 dd 2.1, -5.7, 4.1, 1.3, 2.1, -5.7, 4.1, 1.3 ;
     a_matrix_rows dq 1024
     a_matrix_cols dq 1024
     align 16
-    b_matrix_rmaj times 131072 dd -3.1, 4.3, 1.7, 3.1, 2.1, -5.7, 4.1, 1.3 ;1024
+    b_matrix_cmaj times 131072 dd -3.1, 4.3, 1.7, 3.1, 2.1, -5.7, 4.1, 1.3 ;
     b_matrix_rows dq 1024
     b_matrix_cols dq 1024
 
     fmt db "%f", 0x0a, 0
     fmt_time: db "Wall time: %.6f s", 0x0a, 0
-    one_million: dq 1000000000.0  ; 1e9 as a double
+    one_billion: dq 1000000000.0  ; 1e9 as a double
 
 section .bss
     align  16
@@ -35,37 +35,40 @@ lea rsi, [rel start_time]
 call clock_gettime      ; Call libC function (easier than syscall)
 
 xor r10,r10 ; i
-mov r9,[a_matrix_cols] ; cache a_matrix_cols
-mov r13,[b_matrix_cols] ; cache b_matrix_cols
+mov r9,[a_matrix_cols] ; cache r9 = a_matrix_cols
+mov r13,[b_matrix_cols] ; cache r13 = b_matrix_cols
 
 .loop_a_rows:
 
-mov r14,r10; r14 holds i
-imul r14,[a_matrix_cols] ; r14 = i*a_matrix_cols
+mov r14,r10 ; r14 = i
+imul r14,r9 ; r14 = i*a_matrix_cols
 
-xor r11,r11 ; j
+xor r11,r11 ; j = 0
 .loop_b_cols:
-    xor r12,r12 ; k
+    mov r12,r9 ; k = a_cols (gets decremented on each iteration)
+    mov r15,r11 ; r15 = j
+    imul r15,r9 ; r15 = j*b_rows = j*a_cols
+    
+    mov r14,r10 ; r14 = i
+    imul r14,r9 ; r14 = i*a_matrix_cols
     xorps xmm2,xmm2 ; accumulator
     .loop_dotprod:
-        align 16
-        mov r8,r12
-        imul r8,r13
-        movss xmm0,  [a_matrix_rmaj+r14*4]    ;  xmm0 used for a[i][k]
-        add r8,r11; r8 = [k*b_cols + j] = [k][j]
-        movss xmm1,  [b_matrix_rmaj+r8*4]    ;  xmm1 used for b[k][j]
+        ; align 16
+        movss xmm0,  [a_matrix_rmaj+r14*4]    ;  xmm0 = a[i][k] = a[i*a_cols + k]
+        movss xmm1,  [b_matrix_cmaj+r15*4]    ;  xmm1 = b[k][j] = b[j*a_cols + k]
         mulss xmm0,xmm1 ; xmm0 = a[i][k] * b[k][j] 
         addss xmm2,xmm0 ; xmm2 hold the dotprod so far
+
+        inc r15
         inc r14
-        inc r12
-        cmp r12,r9 ; loop control
-        jl .loop_dotprod
+        dec r12
+        jnz .loop_dotprod
 
         ; Save dotprod into c_matrix_rmaj[i][j]
-        mov rax, r10              ; rax = i
+        mov rax, r10               ; rax = i
         imul rax,  [b_matrix_cols] ; rax = i * b_matrix_cols
-        add rax, r11              ; rax = (i * b_matrix_cols) + j
-        shl rax, 2               ; multiply by 4 for float32
+        add rax, r11               ; rax = (i * b_matrix_cols) + j
+        shl rax, 2                 ; multiply by 4 for float32
         movss  [c_matrix_rmaj + rax], xmm2 ; store dot product
 
     inc r11
@@ -103,7 +106,7 @@ dec rax                 ; Subtract 1 second
 ; Convert to floating-point seconds
 cvtsi2sd xmm0, rax      ; seconds_diff as double
 cvtsi2sd xmm1, rcx      ; nsec_diff as double
-divsd xmm1, [rel one_million]  ; nsec_diff / 1e9
+divsd xmm1, [rel one_billion]  ; nsec_diff / 1e9
 addsd xmm0, xmm1        ; total_seconds = seconds_diff + nsec_diff/1e9
 
 ; ==== Print the result ====

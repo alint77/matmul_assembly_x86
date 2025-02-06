@@ -1,10 +1,10 @@
 %include "header.inc"
 
 section .data
-    a_matrix_rmaj: dd 2.1,3.1,4.1 , 5.1,6.1,7.1 , 8.1,9.1,10.1 , 11.1,12.1,13.1 , 14.1,15.1,16.1
+    a_matrix_rmaj: times 5 dd 2.1,3.1,4.1 
     a_matrix_rows: dq 5
     a_matrix_cols: dq 3
-    b_matrix_rmaj: dd 2.1,3.1,4.1,5.1 , 2.1,3.1,4.1,5.1 , 2.1,3.1,4.1,5.1
+    b_matrix_rmaj: times 3 dd 2.1,3.1,4.1,5.1
     b_matrix_rows: dq 3
     b_matrix_cols: dq 4
 

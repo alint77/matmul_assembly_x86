@@ -58,33 +58,38 @@ xor r11,r11 ; j = 0
     ; lea r15, [rel b_matrix_cmaj + rax] ; B[0][j]
 
     mov r12,r9 ; k = a_cols (gets decremented on each iteration)
-    shr r12,3
+    shr r12,3  ; k /= 8 for simd
+
     mov r15,r11 ; r15 = j
     imul r15,r9 ; r15 = j*b_rows = j*a_cols
     
     mov r14,r10 ; r14 = i
-    imul r14,r9 ; r14 = i*a_matrix_cols
+    imul r14,r9 ; r14 = i*a_cols
+
+    mov r8,r9
+    shl r8,2    ; r8  = a_cols*4 = b_rows*4
+    shl r14,2   ; r14 = i*a_cols*4
+    shl r15,2   ; r15 = j*b_rows*4
 
     vxorps ymm15,ymm15,ymm15 ; accumulator c[i][j]
     vxorps ymm14,ymm14,ymm14 ; accumulator c[i][j+1]
     vxorps ymm13,ymm13,ymm13 ; accumulator c[i+1][j]
     vxorps ymm12,ymm12,ymm12 ; accumulator c[i+1][j+1]
     
-    .loop_dotprod:
+    .loop_dotprod: ; 2x2 kernel:  4 mem reads for 4 c elements => 1 read per element
         
-        vmovaps ymm0,  [a_matrix_rmaj+r14*4]       ;  ymm0 = a[i][k] = a[i*a_cols + k]
-        vmovaps ymm1,  [a_matrix_rmaj+r9+r14*4]    ;  ymm1 = a[i+1][k] = a[(i+1)*a_cols + k]
-        vmovaps ymm2,  [b_matrix_cmaj+r15*4]       ;  ymm2 = b[k][j] = b[i*b_rows + k]
-        vmovaps ymm3,  [b_matrix_cmaj+r9+r15*4]    ;  ymm3 = b[k][j+1] = b[(j+1)*b_rows + k]
-
+        vmovaps ymm0,  [a_matrix_rmaj+r14]       ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        vmovaps ymm1,  [a_matrix_rmaj+r8+r14]    ;  ymm1 = a[i+1][k] = a[(i+1)*a_cols + k]
+        vmovaps ymm2,  [b_matrix_cmaj+r15]       ;  ymm2 = b[k][j] = b[i*b_rows + k]
+        vmovaps ymm3,  [b_matrix_cmaj+r8+r15]    ;  ymm3 = b[k][j+1] = b[(j+1)*b_rows + k]
 
         vfmadd231ps ymm15,ymm0,ymm2 ; c[i][j]
         vfmadd231ps ymm14,ymm0,ymm3 ; c[i][j+1]
         vfmadd231ps ymm13,ymm1,ymm2 ; c[i+1][j]
         vfmadd231ps ymm12,ymm1,ymm3 ; c[i+1][j+1]
 
-        add r15,8
-        add r14,8
+        add r15,32
+        add r14,32
         dec r12
 
         jnz .loop_dotprod

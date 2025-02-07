@@ -77,7 +77,7 @@ xor r11,r11 ; j = 0
     vxorps ymm5,ymm5,ymm5    ; accumulator ymm5  = c[i+2][j+2]
     vxorps ymm4,ymm4,ymm4    ; accumulator ymm4  = c[i+2][j+3]
 
-    .loop_dotprod: ; 3x4 kernel:  7 mem reads for 12 c elements => 0.58 read per element 
+    .loop_dotprod: ; 3x4 kernel:  7 mem reads for 12 c elements => 0.58 mem reads per element 
         
         ; iterating over 3 lines of a and 4 columns of b:
 

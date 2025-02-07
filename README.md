@@ -31,7 +31,8 @@ __________________
 Matmul_simd_5.asm : using a 2x2 kernel to calculate 4 elements of C in each innerloop iteration (4 mem reads for 4 C elements instead of 2/element) reaching ~0.034s which is ~62GFLOPs 
 __________________
 
-Matmul_simd_6.asm : expanding the kernel to 2x4 submatrix. innerloop now iterates over a`[i:i+2)[k]` and b`[j:j+4)[k]`. so 6 mem reads to calcualte 8 elements of c. result is ~0.0255s or ~84GFLOPs
+Matmul_simd_6.asm : expanding the kernel to 2x4 submatrix. innerloop now iterates over `a[i:i+2)[k]` and `a[j:j+4)[k]`. so 6 mem reads to calcualte 8 elements of c. result is ~0.0255s or ~84GFLOPs
 __________________
 
+Matmul_simd_7.asm : expanding the kernel again to 3x4 submatrix. innerloop now iterates over `a[i:i+3)[k]` and `b[j:j+4)[k]`. so 7 mem reads to calcualte 12 elements of c. result is ~0.0205s or ~105GFLOPs. This is the optimal kernel in terms of register utilisation. all 16 vector FP registers (ymm) are being used inside the innerloop.
 

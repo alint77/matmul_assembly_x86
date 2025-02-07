@@ -28,10 +28,10 @@ __________________
 Matmul_simd_4.asm : using AVX2 simd to calculate 8 float32 value in one instruction. combined with unrolling the innerloop for lower loop boundary checks overhead leads to a massive speed up: ~0.085s
 __________________
 
-Matmul_simd_5.asm : using a 2x2 kernel to calculate 4 elements of C in each innerloop iteration (4 mem reads for 4 C elements instead of 2/element) reaching ~0.034 which is ~62GFLOPs 
+Matmul_simd_5.asm : using a 2x2 kernel to calculate 4 elements of C in each innerloop iteration (4 mem reads for 4 C elements instead of 2/element) reaching ~0.034s which is ~62GFLOPs 
 __________________
 
-Matmul_simd_6.asm : expanding the kernel to 2x4 submatrix. innerloop now iterates over a`[i:i+2)[k]` and b`[j:j+4)[k]`. so 6 mem reads to calcualte 8 elements of c. result is ~ 0.0255s or ~84GFLOPs
+Matmul_simd_6.asm : expanding the kernel to 2x4 submatrix. innerloop now iterates over a`[i:i+2)[k]` and b`[j:j+4)[k]`. so 6 mem reads to calcualte 8 elements of c. result is ~0.0255s or ~84GFLOPs
 __________________
 
 

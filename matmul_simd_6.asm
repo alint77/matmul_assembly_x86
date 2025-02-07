@@ -46,17 +46,6 @@ mov r13,[b_matrix_cols] ; cache, r13 = b_matrix_cols
 xor r11,r11 ; j = 0
 .loop_b_cols:
 
-    ; ; Calculate base addresses for A's row and B's column
-    ; mov rax, r10
-    ; imul rax, r9         ; rax = i * 1024
-    ; shl rax, 2           ; rax = i * 1024 * 4 (byte offset)
-    ; lea r14, [rel a_matrix_rmaj + rax] ; A[i][0]
-
-    ; mov rax, r11
-    ; imul rax, r9         ; rax = j * 1024
-    ; shl rax, 2           ; rax = j * 1024 * 4
-    ; lea r15, [rel b_matrix_cmaj + rax] ; B[0][j]
-
     mov r12,r9  ; k = a_cols (gets decremented on each iteration)
     shr r12,3   ; k /= 8 for simd
 
@@ -88,10 +77,8 @@ xor r11,r11 ; j = 0
     .loop_dotprod: ; 2x4 kernel:  6 mem reads for 8 c elements => 0.75 read per element 
         
         ; iterating over 2 lines of a and 4 columns of b:
-
         vmovaps ymm0,  [a_matrix_rmaj+r14]       ;  ymm0 = a[i][k] = a[i*a_cols + k]
-        vmovaps ymm1,  [a_matrix_rmaj+r14+r8]    ;  ymm1 = a[i+1][k] = a[(i+1)*a_cols + k]
-
+        
         vmovaps ymm2,  [b_matrix_cmaj+r15]       ;  ymm2 = b[k][j] = b[i*b_rows + k]
         vmovaps ymm3,  [b_matrix_cmaj+r15+r8]    ;  ymm3 = b[k][j+1] = b[(j+1)*b_rows + k]
         vmovaps ymm4,  [b_matrix_cmaj+r15+r8*2]  ;  ymm4 = b[k][j+2] = b[(j+2)*b_rows + k]
@@ -101,12 +88,13 @@ xor r11,r11 ; j = 0
         vfmadd231ps ymm14,ymm0,ymm3 ; c[i][j+1]
         vfmadd231ps ymm13,ymm0,ymm4 ; c[i][j+2]
         vfmadd231ps ymm12,ymm0,ymm5 ; c[i][j+3]
-
-        vfmadd231ps ymm11,ymm1,ymm2 ; c[i+1][j]
-        vfmadd231ps ymm10,ymm1,ymm3 ; c[i+1][j+1]
-        vfmadd231ps ymm9,ymm1,ymm4  ; c[i+1][j+2]
-        vfmadd231ps ymm8,ymm1,ymm5  ; c[i+1][j+3]
-
+        
+        vmovaps ymm0,  [a_matrix_rmaj+r14+r8]    ;  ymm1 = a[i+1][k] = a[(i+1)*a_cols + k]
+        vfmadd231ps ymm11,ymm0,ymm2 ; c[i+1][j]
+        vfmadd231ps ymm10,ymm0,ymm3 ; c[i+1][j+1]
+        vfmadd231ps ymm9,ymm0,ymm4  ; c[i+1][j+2]
+        vfmadd231ps ymm8,ymm0,ymm5  ; c[i+1][j+3]
+        
         add r15,32
         add r14,32
         dec r12

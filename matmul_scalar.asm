@@ -1,3 +1,6 @@
+
+; PRACTICE FILE. PLEASE IGNORE. IMPLEMENTATIONS START AT *_1.asm
+
 %include "header.inc"
 
 SECTION .data

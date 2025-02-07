@@ -2,11 +2,11 @@
 
 section .data
     align 32
-    a_matrix_rmaj times 131072 dd 2.1, -5.7, 4.1, 1.3, 2.1, -5.7, 4.1, 1.3 ;
+    a_matrix_rmaj times 1048576 dd 2.1 ;
     a_matrix_rows dq 1024
     a_matrix_cols dq 1024
     align 32
-    b_matrix_cmaj times 131072 dd -3.1, 4.3, 1.7, 3.1, 2.1, -5.7, 4.1, 1.3 ;
+    b_matrix_cmaj times 1048576 dd -3.1;
     b_matrix_rows dq 1024
     b_matrix_cols dq 1024
 
@@ -63,23 +63,50 @@ xor r11,r11 ; j = 0
     mov r14,r10 ; r14 = i
     imul r14,r9 ; r14 = i*a_matrix_cols
 
-    vxorps ymm2,ymm2,ymm2 ; accumulator
-
+    vxorps ymm15,ymm15,ymm15 ; accumulator 
+    
     .loop_dotprod:
-
+        
         vmovaps ymm0,  [a_matrix_rmaj+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
         vmovaps ymm1,  [b_matrix_cmaj+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
-        
-        vfmadd231ps ymm2,ymm0,ymm1
+        vfmadd231ps ymm15,ymm0,ymm1
 
-        add r15,8
-        add r14,8
-        dec r12
+        vmovaps ymm2,  [a_matrix_rmaj+32+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        vmovaps ymm3,  [b_matrix_cmaj+32+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+        vfmadd231ps ymm15,ymm2,ymm3
+
+        vmovaps ymm4,  [a_matrix_rmaj+64+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        vmovaps ymm5,  [b_matrix_cmaj+64+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+        vfmadd231ps ymm15,ymm4,ymm5
+
+        vmovaps ymm6,  [a_matrix_rmaj+96+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        vmovaps ymm7,  [b_matrix_cmaj+96+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+        vfmadd231ps ymm15,ymm6,ymm7
+
+        ; vmovaps ymm8,  [a_matrix_rmaj+128+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        ; vmovaps ymm9,  [b_matrix_cmaj+128+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+
+        ; vmovaps ymm10,  [a_matrix_rmaj+160+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        ; vmovaps ymm11,  [b_matrix_cmaj+160+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+
+        ; vmovaps ymm12,  [a_matrix_rmaj+192+r14*4]    ;  ymm0 = a[i][k] = a[i*a_cols + k]
+        ; vmovaps ymm13,  [b_matrix_cmaj+192+r15*4]    ;  ymm1 = b[k][j] = b[j*a_cols + k]
+        
+        ; vfmadd231ps ymm15,ymm8,ymm9
+        ; vfmadd231ps ymm15,ymm10,ymm11
+        ; vfmadd231ps ymm15,ymm12,ymm13
+
+        add r15,32
+        add r14,32
+        add r12,-4
         jnz .loop_dotprod
 
-        ; Horizontal sum of ymm2 into scalar
-        vextractf128 xmm0, ymm2, 1  ; Extract upper 128 bits
-        vaddps xmm1, xmm0, xmm2     ; Combine halves
+        vxorps ymm0,ymm0,ymm0
+        vxorps ymm1,ymm1,ymm1
+
+        ; Horizontal sum of ymm15 into scalar
+        vextractf128 xmm0, ymm15, 1  ; Extract upper 128 bits
+        vaddps xmm1, xmm0, xmm15     ; Combine halves
         vhaddps xmm1, xmm1, xmm1    ; Horizontal add
         vhaddps xmm1, xmm1, xmm1    ; Final sum in xmm1[0]
 
@@ -135,4 +162,5 @@ call printf
 
 
 add rsp,32
+leave
 exit 0

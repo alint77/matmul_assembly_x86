@@ -1,10 +1,13 @@
-Implementing float32 Matrix Multiplication in X86_64 assembly and attempting to optimise using various techniques.
+Implementing float32 Matrix Multiplication in X86_64 assembly and attempting to optimise using various techniques. With the hopes of exceeding 130 GFLOPs reached with openblas. 
+__________________
 
 PC specs: Ryzen 7 5800x - 4x8 32GB 3600 MT/s CL14 with tuned subtimings
+__________________
 
-matmul_scalar_1.asm : Naive implementation on small matrices. 
+Matmul_scalar_1.asm : Naive implementation on small matrices. 
+__________________
 
-matmul_scalar_2.asm : Naive implementation on 1024x1024 matrices: ~2.8s (with high run to run variance)
+Matmul_scalar_2.asm : Naive implementation on 1024x1024 matrices: ~2.8s (with high run to run variance)
 
 The equivelant C code runs much slower: -O0: 4.3s, -O3: 3.4s 
 
@@ -17,11 +20,15 @@ minimise number of memory accesses inside inner loop by caching i*a_matrix_cols,
 aligning the instructions inside the inner loop causes massive performance uplift and reduces variance significantly: ~2.1s 
 
 aligning the matrices themselves also improves performance: ~1.85s
+__________________
 
+Matmul_scalar_3.asm : Store second matrix in column major format. more uniform memory access pattern on matrix_b increases cache hits, leading to considerable speedup. ~0.65s 
+__________________
 
+Matmul_simd_4.asm : using AVX2 simd to calculate 8 float32 value in one instruction. combined with unrolling the innerloop for lower loop boundary checks overhead leads to a massive speed up: ~0.085s
+__________________
 
-
-
-
+Matmul_simd_5.asm : using a 2x2 kernel to calculate 4 elements of C in each innerloop iteration (4 mem access per 4 C element instead of 2/element) reaching ~0.034 which is ~62GFLOPs 
+__________________
 
 

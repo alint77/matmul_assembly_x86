@@ -2,7 +2,7 @@
 
 section .data
     align 32
-    a_matrix_rmaj times 1048576 dd 2.1 ;
+    a_matrix_rmaj times 1056768 dd 2.1 ;
     a_matrix_rows dq 1032
     a_matrix_cols dq 1024
     align 32
@@ -81,31 +81,31 @@ xor r11,r11 ; j = 0
         
         ; iterating over 3 lines of a and 4 columns of b:
 
-        vmovaps ymm1,  [a_matrix_rmaj+r14]
-        vmovaps ymm2,  [a_matrix_rmaj+r14 +r8]
-        vmovaps ymm3,  [a_matrix_rmaj+r14 +2*r8]
+        vmovaps ymm1,  [a_matrix_rmaj+r14]       ;  ymm1 = a[i][k]
+        vmovaps ymm2,  [a_matrix_rmaj+r14 +r8]   ;  ymm2 = a[i+1][k]
+        vmovaps ymm3,  [a_matrix_rmaj+r14 +2*r8] ;  ymm3 = a[i+2][k]
 
         vmovaps ymm0,  [b_matrix_cmaj+r15]       ;  ymm0 = b[k][j] = b[i*b_rows + k]
 
         vfmadd231ps ymm15,ymm0,ymm1 ; c[i][j]
         vfmadd231ps ymm11,ymm0,ymm2 ; c[i+1][j]
-        vfmadd231ps ymm7,ymm0,ymm3 ; c[i+2][j]
+        vfmadd231ps ymm7,ymm0,ymm3  ; c[i+2][j]
 
         vmovaps ymm0,  [b_matrix_cmaj+r15+r8]    ;  ymm0 = b[k][j+1] = b[(j+1)*b_rows + k]
         
-        vfmadd231ps ymm14,ymm0,ymm1  ; c[i][j+1]
-        vfmadd231ps ymm10,ymm0,ymm2  ; c[i+1][j+1]
+        vfmadd231ps ymm14,ymm0,ymm1 ; c[i][j+1]
+        vfmadd231ps ymm10,ymm0,ymm2 ; c[i+1][j+1]
         vfmadd231ps ymm6,ymm0,ymm3  ; c[i+2][j+1]
 
         vmovaps ymm0,  [b_matrix_cmaj+r15+r8*2]  ;  ymm0 = b[k][j+2] = b[(j+2)*b_rows + k]
 
-        vfmadd231ps ymm13,ymm0,ymm1  ; c[i][j+2]
+        vfmadd231ps ymm13,ymm0,ymm1 ; c[i][j+2]
         vfmadd231ps ymm9,ymm0,ymm2  ; c[i+1][j+2]
         vfmadd231ps ymm5,ymm0,ymm3  ; c[i+2][j+2]
 
         vmovaps ymm0,  [b_matrix_cmaj+r15+rbx]   ;  ymm0 = b[k][j+3] = b[(j+3)*b_rows + k]
 
-        vfmadd231ps ymm12,ymm0,ymm1  ; c[i][j+3]
+        vfmadd231ps ymm12,ymm0,ymm1 ; c[i][j+3]
         vfmadd231ps ymm8,ymm0,ymm2  ; c[i+1][j+3]
         vfmadd231ps ymm4,ymm0,ymm3  ; c[i+2][j+3]
         
@@ -179,16 +179,12 @@ xor r11,r11 ; j = 0
 
 
     add r11,4
-    cmp r11,[b_matrix_cols] ; loop control i
+    cmp r11,[b_matrix_cols] ; loop control j
     jl .loop_b_cols
 
 add r10,3
 cmp r10,[a_matrix_rows] ; loop control i
 jl .loop_a_rows
-
-; mov rdi,512
-; mov rsi,c_matrix_rmaj
-; call _printf_arr_f32
 
 ; ==== Get end time ====
 mov rdi, 1              ; CLOCK_MONOTONIC
@@ -220,7 +216,6 @@ addsd xmm0, xmm1        ; total_seconds = seconds_diff + nsec_diff/1e9
 lea rdi, [rel fmt_time] ; Format string
 mov rax, 1              ; 1 vector register used (xmm0)
 call printf
-
 
 add rsp,32
 leave

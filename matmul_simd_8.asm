@@ -1,14 +1,14 @@
 %include "header.inc"
-
+; TODO: WRITE matrix rowmaj to custom 3x4 : write C or python first
 section .data
     align 32
-    a_matrix_rmaj times 1056768 dd 2.1 ;
+    a_matrix_rmaj times 1032*1032 dd 2.1 ;
     a_matrix_rows dq 1032
-    a_matrix_cols dq 1024
+    a_matrix_cols dq 1032
     align 32
-    b_matrix_cmaj times 1048576 dd -3.1;
-    b_matrix_rows dq 1024
-    b_matrix_cols dq 1024
+    b_matrix_cmaj times 1032*1032 dd -3.1;
+    b_matrix_rows dq 1032
+    b_matrix_cols dq 1032
     align 32
     perm_mask dd 0,2,4,6,1,3,5,7
 
@@ -18,7 +18,7 @@ section .data
 
 section .bss
     align  32
-    c_matrix_rmaj resd 1056768
+    c_matrix_rmaj resd 1032*1032
     start_time resq 2
     end_time resq 2
 
@@ -59,64 +59,63 @@ xor r11,r11 ; j = 0
     shl r8,2    ; r8  = a_cols*4 = b_rows*4
 
     mov rbx,r8  ; 
-    imul rbx,3  ; rbx = r8*3 
+    imul rbx,3  ; rbx = r8*3
 
     shl r14,2   ; r14 = i*a_cols*4
     shl r15,2   ; r15 = j*b_rows*4
 
-    vxorps ymm15,ymm15,ymm15 ; accumulator ymm15 = c[i][j]
-    vxorps ymm14,ymm14,ymm14 ; accumulator ymm14 = c[i][j+1]
-    vxorps ymm13,ymm13,ymm13 ; accumulator ymm13 = c[i][j+2]
-    vxorps ymm12,ymm12,ymm12 ; accumulator ymm12 = c[i][j+3]
-    vxorps ymm11,ymm11,ymm11 ; accumulator ymm11 = c[i+1][j]
-    vxorps ymm10,ymm10,ymm10 ; accumulator ymm10 = c[i+1][j+1]
-    vxorps ymm9,ymm9,ymm9    ; accumulator ymm9  = c[i+1][j+2]
-    vxorps ymm8,ymm8,ymm8    ; accumulator ymm8  = c[i+1][j+3]
-    vxorps ymm7,ymm7,ymm7    ; accumulator ymm7  = c[i+2][j]
-    vxorps ymm6,ymm6,ymm6    ; accumulator ymm6  = c[i+2][j+1]
-    vxorps ymm5,ymm5,ymm5    ; accumulator ymm5  = c[i+2][j+2]
-    vxorps ymm4,ymm4,ymm4    ; accumulator ymm4  = c[i+2][j+3]
-    
-    .loop_dotprod: ; 3x4x8 kernel:  7 mem reads for 12x8 c elements => 0.58/8 mem reads per element 
+    vxorps xmm15,xmm15,xmm15 ; accumulator ymm15 = c[i][j]
+    vxorps xmm14,xmm14,xmm14 ; accumulator ymm14 = c[i][j+1]
+    vxorps xmm13,xmm13,xmm13 ; accumulator ymm13 = c[i][j+2]
+    vxorps xmm12,xmm12,xmm12 ; accumulator ymm12 = c[i][j+3]
+    vxorps xmm11,xmm11,xmm11 ; accumulator ymm11 = c[i+1][j]
+    vxorps xmm10,xmm10,xmm10 ; accumulator ymm10 = c[i+1][j+1]
+    vxorps xmm9,xmm9,xmm9    ; accumulator ymm9  = c[i+1][j+2]
+    vxorps xmm8,xmm8,xmm8    ; accumulator ymm8  = c[i+1][j+3]
+    vxorps xmm7,xmm7,xmm7    ; accumulator ymm7  = c[i+2][j]
+    vxorps xmm6,xmm6,xmm6    ; accumulator ymm6  = c[i+2][j+1]
+    vxorps xmm5,xmm5,xmm5    ; accumulator ymm5  = c[i+2][j+2]
+    vxorps xmm4,xmm4,xmm4    ; accumulator ymm4  = c[i+2][j+3]
+
+    .loop_dotprod: ; 3x4(x8) kernel:  7 mem reads for 12(x8) c elements => 0.58 mem reads per element 
         
         ; iterating over 3 lines of a and 4 columns of b:
 
         vmovaps ymm1,  [a_matrix_rmaj+r14]       ;  ymm1 = a[i][k]
-        vmovaps ymm2,  [a_matrix_rmaj+r14 +r8]   ;  ymm2 = a[i+1][k]
-        vmovaps ymm3,  [a_matrix_rmaj+r14 +2*r8] ;  ymm3 = a[i+2][k]
+        vmovaps ymm2,  [a_matrix_rmaj+r14 +32]   ;  ymm2 = a[i+1][k]
+        vmovaps ymm3,  [a_matrix_rmaj+r14 +64] ;  ymm3 = a[i+2][k]
 
         vmovaps ymm0,  [b_matrix_cmaj+r15]       ;  ymm0 = b[k][j] = b[i*b_rows + k]
 
         vfmadd231ps ymm15,ymm0,ymm1 ; c[i][j]
         vfmadd231ps ymm11,ymm0,ymm2 ; c[i+1][j]
-        vfmadd231ps ymm7,ymm0,ymm3  ; c[i+2][j]
+        vfmadd231ps ymm7,ymm0,ymm3 ; c[i+2][j]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+r8]    ;  ymm0 = b[k][j+1] = b[(j+1)*b_rows + k]
+        vmovaps ymm0,  [b_matrix_cmaj+r15+32]    ;  ymm0 = b[k][j+1] = b[(j+1)*b_rows + k]
         
-        vfmadd231ps ymm14,ymm0,ymm1 ; c[i][j+1]
-        vfmadd231ps ymm10,ymm0,ymm2 ; c[i+1][j+1]
+        vfmadd231ps ymm14,ymm0,ymm1  ; c[i][j+1]
+        vfmadd231ps ymm10,ymm0,ymm2  ; c[i+1][j+1]
         vfmadd231ps ymm6,ymm0,ymm3  ; c[i+2][j+1]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+r8*2]  ;  ymm0 = b[k][j+2] = b[(j+2)*b_rows + k]
+        vmovaps ymm0,  [b_matrix_cmaj+r15+64]  ;  ymm0 = b[k][j+2] = b[(j+2)*b_rows + k]
 
-        vfmadd231ps ymm13,ymm0,ymm1 ; c[i][j+2]
+        vfmadd231ps ymm13,ymm0,ymm1  ; c[i][j+2]
         vfmadd231ps ymm9,ymm0,ymm2  ; c[i+1][j+2]
         vfmadd231ps ymm5,ymm0,ymm3  ; c[i+2][j+2]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+rbx]   ;  ymm0 = b[k][j+3] = b[(j+3)*b_rows + k]
+        vmovaps ymm0,  [b_matrix_cmaj+r15+96]   ;  ymm0 = b[k][j+3] = b[(j+3)*b_rows + k]
 
-        vfmadd231ps ymm12,ymm0,ymm1 ; c[i][j+3]
+        vfmadd231ps ymm12,ymm0,ymm1  ; c[i][j+3]
         vfmadd231ps ymm8,ymm0,ymm2  ; c[i+1][j+3]
         vfmadd231ps ymm4,ymm0,ymm3  ; c[i+2][j+3]
         
-
-        add r15,32
-        add r14,32
+        add r14,96
+        add r15,128
         dec r12
 
         jnz .loop_dotprod
 
-        
+        .hadd:
         ; calculating horizontal add (reduce to single float32 scalar) for c[i][j:j+4]
         vhaddps ymm15,ymm15,ymm14 
         vhaddps ymm13,ymm13,ymm12
@@ -153,6 +152,7 @@ xor r11,r11 ; j = 0
 
         vhaddps ymm7,ymm7,ymm7 ; [a,b,a,b,c,d,d]
 
+        .save_c:
 
         ; Save dotprod into c_matrix_rmaj
         mov rax, r10               ; rax = i
@@ -185,6 +185,10 @@ xor r11,r11 ; j = 0
 add r10,3
 cmp r10,[a_matrix_rows] ; loop control i
 jl .loop_a_rows
+
+; mov rdi,512
+; mov rsi,c_matrix_rmaj
+; call _printf_arr_f32
 
 ; ==== Get end time ====
 mov rdi, 1              ; CLOCK_MONOTONIC

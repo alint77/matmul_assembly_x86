@@ -41,4 +41,6 @@ Matmul_simd_8.asm : The code now assumes that a and b are stored in blocks, so t
 
 __________________
 
+Matmul_simd_9.asm : Complete rewrite of the algorithm. It now uses a 6x2(x8) kernel uses vbroadcastss on A elements, won't need to do horizontal add outside innerloop anymore. The memory access pattern on B is not optimal but will be fixed by accessing B in blocking order in the next implementation. performance is lower than _8.asm but should improve after blocking. 
 
+__________________

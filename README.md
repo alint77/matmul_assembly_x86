@@ -44,3 +44,5 @@ __________________
 Matmul_simd_9.asm : Complete rewrite of the algorithm. It now uses a 6x2(x8) kernel uses vbroadcastss on A elements, won't need to do horizontal add outside innerloop anymore. The memory access pattern on B is not optimal but will be fixed by accessing B in blocking order in the next implementation. performance is lower than _8.asm but should improve after blocking. 
 
 __________________
+
+Matmul_simd_10.asm : Memory access on B matrix now assumes a blocking order. ~135 GFLOPs. pretty much on par with openblas. The equivelant C code also added. The C code outperforms openblas and reaches ~145 GFLOPs, compile with `clang -O2 -march=native`  

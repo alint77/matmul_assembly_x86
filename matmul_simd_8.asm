@@ -77,10 +77,10 @@ xor r11,r11 ; j = 0
     vxorps xmm5,xmm5,xmm5    ; accumulator ymm5  = c[i+2][j+2]
     vxorps xmm4,xmm4,xmm4    ; accumulator ymm4  = c[i+2][j+3]
 
+    lea rax, [b_matrix_cmaj+r15]    
+    lea rbx, [a_matrix_rmaj+r14]
     .loop_dotprod: ; 3x4(x8) kernel:  7 mem reads for 12(x8) c elements => 0.58 mem reads per element 
         ; iterating over 3 lines of a and 4 columns of b:
-        lea rax, [b_matrix_cmaj+r15]    
-        lea rbx, [a_matrix_rmaj+r14]
 
         vmovaps ymm0,  [rax]       ;  ymm0 = b[k][j] = b[i*b_rows + k]
 

@@ -1,11 +1,11 @@
 %include "header.inc"
 ; TODO: WRITE matrix rowmaj to custom 3x4 : write C or python first
 section .data
-    align 32
+    align 64
     a_matrix_rmaj times 1032*1032 dd 2.1 ;
     a_matrix_rows dq 1032
     a_matrix_cols dq 1032
-    align 32
+    align 64
     b_matrix_cmaj times 1032*1032 dd -3.1;
     b_matrix_rows dq 1032
     b_matrix_cols dq 1032
@@ -78,32 +78,32 @@ xor r11,r11 ; j = 0
     vxorps xmm4,xmm4,xmm4    ; accumulator ymm4  = c[i+2][j+3]
 
     .loop_dotprod: ; 3x4(x8) kernel:  7 mem reads for 12(x8) c elements => 0.58 mem reads per element 
-        
         ; iterating over 3 lines of a and 4 columns of b:
+        lea rax, [b_matrix_cmaj+r15]    
+        lea rbx, [a_matrix_rmaj+r14]
 
-        vmovaps ymm1,  [a_matrix_rmaj+r14]       ;  ymm1 = a[i][k]
-        vmovaps ymm2,  [a_matrix_rmaj+r14 +32]   ;  ymm2 = a[i+1][k]
-        vmovaps ymm3,  [a_matrix_rmaj+r14 +64] ;  ymm3 = a[i+2][k]
+        vmovaps ymm0,  [rax]       ;  ymm0 = b[k][j] = b[i*b_rows + k]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15]       ;  ymm0 = b[k][j] = b[i*b_rows + k]
-
+        vmovaps ymm1,  [rbx]       ;  ymm1 = a[i][k]
         vfmadd231ps ymm15,ymm0,ymm1 ; c[i][j]
+        vmovaps ymm2,  [rbx +32]   ;  ymm2 = a[i+1][k]
         vfmadd231ps ymm11,ymm0,ymm2 ; c[i+1][j]
+        vmovaps ymm3,  [rbx +64] ;  ymm3 = a[i+2][k]
         vfmadd231ps ymm7,ymm0,ymm3 ; c[i+2][j]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+32]    ;  ymm0 = b[k][j+1] = b[(j+1)*b_rows + k]
+        vmovaps ymm0,  [rax+32]    ;  ymm0 = b[k][j+1] = b[(j+1)*b_rows + k]
         
         vfmadd231ps ymm14,ymm0,ymm1  ; c[i][j+1]
         vfmadd231ps ymm10,ymm0,ymm2  ; c[i+1][j+1]
         vfmadd231ps ymm6,ymm0,ymm3  ; c[i+2][j+1]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+64]  ;  ymm0 = b[k][j+2] = b[(j+2)*b_rows + k]
+        vmovaps ymm0,  [rax+64]  ;  ymm0 = b[k][j+2] = b[(j+2)*b_rows + k]
 
         vfmadd231ps ymm13,ymm0,ymm1  ; c[i][j+2]
         vfmadd231ps ymm9,ymm0,ymm2  ; c[i+1][j+2]
         vfmadd231ps ymm5,ymm0,ymm3  ; c[i+2][j+2]
 
-        vmovaps ymm0,  [b_matrix_cmaj+r15+96]   ;  ymm0 = b[k][j+3] = b[(j+3)*b_rows + k]
+        vmovaps ymm0,  [rax+96]   ;  ymm0 = b[k][j+3] = b[(j+3)*b_rows + k]
 
         vfmadd231ps ymm12,ymm0,ymm1  ; c[i][j+3]
         vfmadd231ps ymm8,ymm0,ymm2  ; c[i+1][j+3]

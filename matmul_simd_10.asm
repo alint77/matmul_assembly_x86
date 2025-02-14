@@ -5,7 +5,7 @@ section .data
     a_matrix_rmaj times 1152*1152 dd 2.1 ;
     a_matrix_rows dq 1152
     a_matrix_cols dq 1152
-    align 32
+    align 64
     b_matrix_blocking times 1152*1152 dd -3.1;
     b_matrix_rows dq 1152
     b_matrix_cols dq 1152
@@ -83,17 +83,22 @@ xor r9,r9 ; r9  = j=0 ; j<b_cols ; j+=64
     imul r12,r15
     shl r12,2
 
+    lea rcx,[b_matrix_blocking+r12]
+
+    align 16
 
     .loop_dotprod: ; 6x2(x8) kernel:  8 mem reads for 12(x8) c elements => 0.66 mem reads per element 
-        align 32
-        lea rax,[a_matrix_rmaj + r11 + 4*r10] ; rax = a[i][k] = 
-        vmovaps ymm0,  [b_matrix_blocking+r12 ]   ;  ymm0 = b[k][j:j+8)   k*b_cols*4 + j
-        vmovaps ymm1,  [b_matrix_blocking+r12 +  32]   ;  ymm1 = b[k][j+8,j+16)
+        lea rax,[a_matrix_rmaj + r11 +4*r10 ] ; rax = a[i][k] = 
+        
+        vmovaps ymm0,  [rcx ]   ;  ymm0 = b[k][j:j+8)   k*b_cols*4 + j
+        vmovaps ymm1,  [rcx +  32]   ;  ymm1 = b[k][j+8,j+16)
         vbroadcastss ymm2,  [rax]           ;  ymm2 = a[i][k] = a[i*a_cols*4 + k*4]
         
         vfmadd231ps ymm15,ymm2,ymm0 ; c[i][j]
         vfmadd231ps ymm14,ymm2,ymm1 ; c[i][j+1]
+
         vbroadcastss ymm3,  [rax+rbx] ;  ymm3 = a[i+1][k] = a[(i+1)*a_cols*4 + k*4]
+
         vfmadd231ps ymm13,ymm3,ymm0 ; c[i+1][j]
         vfmadd231ps ymm12,ymm3,ymm1 ; c[i+1][j+1]
 
@@ -101,7 +106,9 @@ xor r9,r9 ; r9  = j=0 ; j<b_cols ; j+=64
 
         vfmadd231ps ymm11,ymm2,ymm0 ; c[i+2][j]
         vfmadd231ps ymm10,ymm2,ymm1 ; c[i+2][j+1]
+
         vbroadcastss ymm3,  [rax+rdi] ;  ymm3 = a[i+3][k] = a[(i+3)*a_cols*4 + k*4]
+
         vfmadd231ps ymm9,ymm3,ymm0 ; c[i+3][j]
         vfmadd231ps ymm8,ymm3,ymm1 ; c[i+3][j+1]
 
@@ -114,7 +121,7 @@ xor r9,r9 ; r9  = j=0 ; j<b_cols ; j+=64
         vfmadd231ps ymm4,ymm3,ymm1 ; c[i+5][j+1]
 
 
-        add r12,64
+        add rcx,64
         inc r10 ; k++
         cmp r10,r15 ; k < b_matrix_rows
         jl .loop_dotprod

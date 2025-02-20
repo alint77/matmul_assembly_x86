@@ -45,4 +45,8 @@ Matmul_simd_9.asm : Complete rewrite of the algorithm. It now uses a 6x2(x8) ker
 
 __________________
 
-Matmul_simd_10.asm : Memory access on B matrix now assumes a blocking order. ~135 GFLOPs. pretty much on par with openblas. The equivelant C code also added. The C code outperforms openblas and reaches ~145 GFLOPs, compile with `clang -O2 -march=native`  
+Matmul_simd_10.asm : Memory access on B matrix now assumes a blocking order. ~135 GFLOPs. pretty much on par with openblas. The equivalent C code also added. The C code outperforms openblas and reaches ~145 GFLOPs, compile with `clang -O2 -march=native`  
+
+__________________
+
+matmul_lib : This implementation changes the _10.asm to adhere to AMD64 sysV ABI to take arguments as input and integrates them into a library format. The library can be linked with other programs to perform high-performance matrix multiplication. It achieves performance comparable to or exceeding that of OpenBLAS.

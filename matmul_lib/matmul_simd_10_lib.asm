@@ -1,5 +1,3 @@
-%include "header.inc"
-
 section .text
 global matrix_multiply_simd
 

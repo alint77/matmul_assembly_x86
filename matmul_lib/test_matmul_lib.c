@@ -50,6 +50,7 @@ int main() {
         B[i] = (float)(i % 3);
     }
     memset(C, 0, A_ROWS * B_COLS * sizeof(float));
+    memset(C_test, 0, A_ROWS * B_COLS * sizeof(float));
 
     printf("Converting matrix format...\n");
     fflush(stdout);

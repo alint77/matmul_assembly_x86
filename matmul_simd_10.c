@@ -23,18 +23,21 @@ uint64_t nanos() {
 #define BLOCK_A 6
 #define BLOCK_B 2
 #define SIMD 8
-void matmul(const float* a,const float* b,float* c){
+void matmul(const float* a_swizzled,const float* b,float* c){
 
     for (int i = 0; i < A_ROWS; i+=BLOCK_A)
     {
+        int block = i / BLOCK_A;
+
         for (int j = 0; j < B_COLS; j+=BLOCK_B*SIMD)
         {
             __m256 acc[BLOCK_A][BLOCK_B] = {};
             for (int k = 0; k < A_COLS_B_ROWS; k++) {
                 for (int ia = 0; ia < BLOCK_A; ia++) {
-                    __m256 temp_a = _mm256_broadcast_ss(&a[(i+ia)*A_COLS_B_ROWS + k]);
+                    __m256 temp_a = _mm256_broadcast_ss(
+                        &a_swizzled[ block*(A_COLS_B_ROWS*BLOCK_A) + k*BLOCK_A + ia ] );
                     for (int ib = 0; ib < BLOCK_B; ib++) {
-                        // Now b_swizzled access is sequential in memory
+
                         __m256 temp_b = _mm256_load_ps(&b[((j/SIMD)+ib)*A_COLS_B_ROWS*SIMD + k*SIMD]);
                         acc[ia][ib] = _mm256_fmadd_ps(temp_a, temp_b, acc[ia][ib]);
                     }
@@ -53,20 +56,18 @@ void matmul(const float* a,const float* b,float* c){
                     }
                 }
             }
-            
         }
-        
     }
 }
 
 // #endif
 int main() {
 
-    float* A_row_major = (float*)aligned_alloc(32, A_ROWS*A_COLS_B_ROWS*sizeof(float));
-    float* B_row_major = (float*)aligned_alloc(32, A_COLS_B_ROWS*B_COLS*sizeof(float));
-    float* C_row_major = (float*)aligned_alloc(32, A_ROWS*B_COLS*sizeof(float));
-        // Add after matrix initialization and before matmul:
-    float* B_swizzled = (float*)aligned_alloc(32, A_COLS_B_ROWS*B_COLS*sizeof(float));
+    float* A_row_major = (float*)aligned_alloc(64, A_ROWS*A_COLS_B_ROWS*sizeof(float));
+    float* B_row_major = (float*)aligned_alloc(64, A_COLS_B_ROWS*B_COLS*sizeof(float));
+    float* C_row_major = (float*)aligned_alloc(64, A_ROWS*B_COLS*sizeof(float));
+
+    float* B_swizzled = (float*)aligned_alloc(64, A_COLS_B_ROWS*B_COLS*sizeof(float));
     
     for(int i = 0; i < A_ROWS*A_COLS_B_ROWS; i++) A_row_major[i] = -2.0f;
     for(int i = 0; i < A_COLS_B_ROWS*B_COLS; i++) B_row_major[i] = 1.0f;
@@ -80,7 +81,24 @@ int main() {
             }
         }
     }
-    // Initialize matrice
+
+    // Allocate A_swizzled with same total size as A_row_major.
+    float* A_swizzled = (float*)aligned_alloc(64, A_ROWS * A_COLS_B_ROWS * sizeof(float));
+
+    // Preswizzle A:
+    // For each block of BLOCK_A rows, store elements column‐by‐column
+    for (int i = 0; i < A_ROWS; i += BLOCK_A) {
+        int block = i / BLOCK_A; // block index
+        // for every column k in A
+        for (int k = 0; k < A_COLS_B_ROWS; k++) {
+            // Within the block, copy each of the BLOCK_A elements from column k.
+            for (int ia = 0; ia < BLOCK_A; ia++) {
+                A_swizzled[ block * (A_COLS_B_ROWS * BLOCK_A) + k * BLOCK_A + ia ] =
+                    A_row_major[(i + ia) * A_COLS_B_ROWS + k];
+            }
+        }
+    }
+
     memset(C_row_major, 0, A_ROWS*B_COLS*sizeof(float));
 
 
@@ -94,7 +112,7 @@ int main() {
     {
         uint64_t start = nanos();
 
-        matmul(A_row_major,B_swizzled,C_row_major);
+        matmul(A_swizzled,B_swizzled,C_row_major);
 
         uint64_t end = nanos();
 
@@ -107,5 +125,7 @@ int main() {
     free(A_row_major);
     free(B_row_major);
     free(C_row_major);
+    free(B_swizzled);
+    free(A_swizzled);
     return 0;
 }

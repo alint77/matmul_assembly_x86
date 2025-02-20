@@ -9,10 +9,8 @@ section .data
     b_matrix_blocking times 1152*1152 dd -3.1;
     b_matrix_rows dq 1152
     b_matrix_cols dq 1152
-    align 32
-    perm_mask dd 0,2,4,6,1,3,5,7
 
-    fmt db "%f", 0x0a, 0
+    fmt: db "%f", 0x0a, 0
     fmt_time: db "Wall time: %.6f s", 0x0a, 0
     one_billion: dq 1000000000.0  ; 1e9 as a double
 
@@ -92,8 +90,8 @@ xor r9,r9 ; r9  = j=0 ; j<b_cols ; j+=64
         
         vmovaps ymm0,  [rcx ]   ;  ymm0 = b[k][j:j+8)   k*b_cols*4 + j
         vmovaps ymm1,  [rcx +  32]   ;  ymm1 = b[k][j+8,j+16)
+
         vbroadcastss ymm2,  [rax]           ;  ymm2 = a[i][k] = a[i*a_cols*4 + k*4]
-        
         vfmadd231ps ymm15,ymm2,ymm0 ; c[i][j]
         vfmadd231ps ymm14,ymm2,ymm1 ; c[i][j+1]
 
@@ -119,6 +117,7 @@ xor r9,r9 ; r9  = j=0 ; j<b_cols ; j+=64
         vbroadcastss ymm3,  [rax+rsi] ;  ymm3 = a[i+5][k] = a[(i+5)*a_cols*4 + k*4]
         vfmadd231ps ymm5,ymm3,ymm0 ; c[i+5][j]
         vfmadd231ps ymm4,ymm3,ymm1 ; c[i+5][j+1]
+
 
 
         add rcx,64

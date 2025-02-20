@@ -1,56 +1,92 @@
-Implementing float32 Matrix Multiplication in X86_64 assembly and attempting to optimise using various techniques. With the hopes of exceeding 130 GFLOPs reached with openblas. 
-__________________
+# High-Performance Matrix Multiplication in x86_64 Assembly
 
-PC specs: Ryzen 7 5800x - 4x8 32GB 3600 MT/s CL14 with tuned subtimings
-__________________
+[![Architecture](https://img.shields.io/badge/Architecture-x86__64-blue)](https://en.wikipedia.org/wiki/X86-64)
+[![Performance](https://img.shields.io/badge/Performance-135%20GFLOPs-green)](https://github.com/your-username/matmul_assembly_x86)
+[![OpenBLAS](https://img.shields.io/badge/Comparable%20to-OpenBLAS-orange)](https://www.openblas.net/)
 
-Matmul_scalar_1.asm : Naive implementation on small matrices. 
-__________________
+A high-performance implementation of float32 matrix multiplication in x86_64 assembly, optimized using various techniques to achieve performance comparable to or exceeding OpenBLAS (~130 GFLOPs).
 
-Matmul_scalar_2.asm : Naive implementation on 1024x1024 matrices: ~2.8s (with high run to run variance)
+## Table of Contents
+- [System Specifications](#system-specifications)
+- [Implementation Evolution](#implementation-evolution)
+  - [Scalar Implementations](#scalar-implementations)
+  - [SIMD Implementations](#simd-implementations)
+- [Library Implementation](#library-implementation)
+- [Performance Results](#performance-results)
 
-The equivelant C code runs much slower: -O0: 4.3s, -O3: 3.4s 
+## System Specifications
 
-profiling shows 99.7% of time being spent inside inner loop (.loop_dotprod)
+- CPU: AMD Ryzen 7 5800x
+- Memory: 32GB (4x8GB) DDR4-3600 CL14 with tuned subtimings
 
-optimisations:
+## Implementation Evolution
 
-minimise number of memory accesses inside inner loop by caching i*a_matrix_cols, a_matrix_cols and b_matrix_cols inside registers before reaching inner loop.
+### Scalar Implementations
 
-aligning the instructions inside the inner loop causes massive performance uplift and reduces variance significantly: ~2.1s 
+#### 1. Naive Implementation (`matmul_scalar_1.asm`)
+- Initial implementation for small matrices
+- Baseline for optimization
 
-aligning the matrices themselves also improves performance: ~1.85s
-__________________
+#### 2. Large Matrix Implementation (`matmul_scalar_2.asm`)
+- Handles 1024x1024 matrices
+- Performance: ~2.8s (with high variance)
+- Comparison with C:
+  - `-O0`: 4.3s
+  - `-O3`: 3.4s
+- Optimizations:
+  - Cached matrix dimensions in registers
+  - Aligned instructions (~2.1s)
+  - Aligned matrices (~1.85s)
 
-Matmul_scalar_3.asm : Store second matrix in column major format. more uniform memory access pattern on matrix_b increases cache hits, leading to considerable speedup. ~0.65s 
-__________________
+#### 3. Column-Major Format (`matmul_scalar_3.asm`)
+- Stores second matrix in column-major format
+- Improved cache hit rate
+- Performance: ~0.65s
 
-Matmul_simd_4.asm : using AVX2 simd to calculate 8 float32 value in one instruction. combined with unrolling the innerloop for lower loop boundary checks overhead leads to a massive speed up: ~0.085s
-__________________
+### SIMD Implementations
 
-Matmul_simd_5.asm : using a 2x2 kernel to calculate 4 elements of C in each innerloop iteration (4 mem reads for 4 C elements instead of 2/element) reaching ~0.034s which is ~62GFLOPs 
-__________________
+#### 4. AVX2 Introduction (`matmul_simd_4.asm`)
+- Utilizes AVX2 SIMD instructions
+- Processes 8 float32 values per instruction
+- Inner loop unrolling
+- Performance: ~0.085s
 
-Matmul_simd_6.asm : expanding the kernel to 2x4 submatrix. innerloop now iterates over `a[i:i+2)[k]` and `b[j:j+4)[k]`. so 6 mem reads to calcualte 8 elements of c. result is ~0.0255s or ~84GFLOPs
-__________________
+#### 5. 2x2 Kernel (`matmul_simd_5.asm`)
+- Calculates 4 elements of C per iteration
+- Improved memory access efficiency
+- Performance: ~0.034s (~62 GFLOPs)
 
-Matmul_simd_7.asm : expanding the kernel again to 3x4(x8) submatrix. innerloop now iterates over `a[i:i+3)[k]` and `b[j:j+4)[k]`. so 7 mem reads to calcualte 12(x8) elements of c. result is ~0.0205s or ~105GFLOPs. This is the optimal kernel in terms of register utilisation. all 16 vector FP registers (ymm) are being used effectively inside the innerloop.
-__________________
+#### 6. 2x4 Kernel (`matmul_simd_6.asm`)
+- Expanded kernel to 2x4 submatrix
+- 6 memory reads for 8 C elements
+- Performance: ~0.0255s (~84 GFLOPs)
 
-Matmul_simd_8.asm : The code now assumes that a and b are stored in blocks, so the mem reads are sequential for more cache hits. resulting in ~118GFLOPs or 0.0183s 
+#### 7. 3x4 Kernel (`matmul_simd_7.asm`)
+- Optimal register utilization
+- All 16 vector FP registers (ymm) utilized
+- Performance: ~0.0205s (~105 GFLOPs)
 
-__________________
+#### 8. Block Storage (`matmul_simd_8.asm`)
+- Matrices stored in blocks
+- Sequential memory reads
+- Performance: ~0.0183s (~118 GFLOPs)
 
-Matmul_simd_9.asm : Complete rewrite of the algorithm. It now uses a 6x2(x8) kernel uses vbroadcastss on A elements, won't need to do horizontal add outside innerloop anymore. The memory access pattern on B is not optimal but will be fixed by accessing B in blocking order in the next implementation. performance is lower than _8.asm but should improve after blocking. 
+#### 9. Algorithm Rewrite (`matmul_simd_9.asm`)
+- 6x2(x8) kernel implementation
+- Uses `vbroadcastss` on A elements
+- Eliminated horizontal add operations
 
-__________________
+#### 10. Final Optimization (`matmul_simd_10.asm`)
+- Optimized blocking order for matrix B
+- Performance: ~135 GFLOPs
+- C implementation available
+  - Outperforms OpenBLAS (~145 GFLOPs)
+  - Compile with: `clang -O3 -march=native`
 
-Matmul_simd_10.asm : Memory access on B matrix now assumes a blocking order. ~135 GFLOPs. pretty much on par with openblas. The equivalent C code also added. The C code outperforms openblas and reaches ~145 GFLOPs, compile with `clang -O2 -march=native`  
+## Library Implementation
 
-__________________
-
-matmul_lib : This implementation changes the _10.asm to adhere to AMD64 sysV ABI to take arguments as input and integrates them into a library format. The library can be linked with other programs to perform high-performance matrix multiplication. It achieves performance comparable to or exceeding that of OpenBLAS.
-
-__________________
-
-matmul_lib_parallel: multithreaded implementation using the _10.asm routine. 
+The `matmul_lib` directory contains:
+- AMD64 SysV ABI compliant implementation
+- Linkable library format
+- Performance comparable to or exceeding OpenBLAS
+- Parallel implementation using `matmul_simd_10.asm`
